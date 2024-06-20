@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>メンテナンス</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .header {
+            padding-bottom: 10px; 
+            border-bottom: 1px solid #eee; 
+            background-color: rgb(180, 180, 180); 
+            text-align: center; 
+            vertical-align: middole; 
+            position: relative; 
+        }
+        .switch-btn {
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+        }
+        table { border: 1px solid black; table-layout: fixed; }
+        th, td { 
+            border: 1px solid black;
+            table-layout: fixed;
+            vertical-align: middle;
+            align-items: center;
+            text-align: center;
+            justify-content: center;
+        }
+        th { background-color: #f2f2f2; }
+        .first-row {position: sticky; top: 0; z-index: 2; background-color: #f2f2f2; text-align: center;}
+        .changed-row { background-color: yellow; }
+        .changed-cell { background-color: red !important; }
+        .new-row { background-color: yellow; }
+        .expired-row { background-color: #d3d3d3; }
+        .active-row { background-color: white; }
+        .table-container { max-height: 70vh; overflow-y: auto; }
+        .footer { padding-top: 20px; text-align: center; }
+        .filter-display { margin-left: 10px; }
+        .file-input {
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        .file-input input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            right: 0;
+            top: 0;
+        }
+        .col-1 {width: 40px; text-align: center; vertical-align: middle;}
+        .col-2 {width: 50px;}
+        .end-day {text-align: center; vertical-align: middle; margin-top: 16px;}
+        .col-publication-year { width: 90px; } 
+        .col-publication-date { width: 130px; } 
+        .col-publication-term { width: 90px; } 
+        .col-publication-end {width: 117px}
+        .col-status, .col-check {width: 81px}
+        .backBtn {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 5px 5px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 10px;
+            margin: 2px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3 ease;
+        }
+        .deleteBtn {
+            background-color: #FF0000;
+            border: none;
+            color: white;
+            padding: 5px 5px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 12px;
+            margin: 2px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3 ease;
+        }
+        .fileUploadBtn {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 5px 5px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 13px;
+            margin: 2px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3 ease;
+        }
+        .updateBtn {
+            background-color: rgb(13, 110, 252);
+            border: none;
+            color: white;
+            padding: 5px 5px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 13px;
+            margin: 2px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3 ease;
+        }
+        .backBtn:hover, .deleteBtn:hover, .updateBtn:hover {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        .vertical-text{
+            writing-mode: vertical-rl;
+        }
+        .flatpickr-input { background-color: white !important; }
+        .btn-news {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background-color: #17a2b8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        .btn-news:hover {
+            background-color: #138496;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.9/flatpickr.min.css">
+</head>
+<body>
+    <div class="header">
+        <h2>ニュース登録画面</h2>
+        
+    </div>
+    <div id="app" class="container">
+        <div class="filter-area">
+            <button class="btn btn-info" @click="toggleModal">フィルタ</button>
+            <span class="filter-display">${ displayApps }</span>
+            <button class="btn btn-secondary switch-btn" @click="toggleMode">${ isTestMode ? '本番モード' : 'テストモード' }</button>
+        </div>
+        <div class="table-container">
+            <table class="table table-bordered">
+                <thead class="thead-dark">
+                    <tr class="first-row">
+                        <th class="col-1"></th>
+                        <th class="col-2"></th>
+                        <th>アプリカテゴリ</th>
+                        <th>カテゴリ</th>
+                        <th>タイトル</th>
+                        <th class="col-publication-date">公開日</th>
+                        <th class="col-publication-term">公開期間</th>
+                        <th>公開終了日</th>
+                        <th>本番用ニュースファイル</th>
+                        <th v-if="isTestMode">テスト用ニュースファイル</th>
+                        <th v-if="isTestMode"></th>
+                        <th class="col-publication-end">掲載終了フラグ</th>
+                        <th class="col-status" >ステータス</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(news, index) in filteredNews" :key="index" 
+                    :class="{
+                        'new-row': news.newRow,
+                        'changed-row': news.changed && !news.newRow,
+                        'expired-row': news.current[10] === '掲載終了' && !news.changed,
+                        'active-row': news.current[10] !== '掲載終了' && !news.changed && !news.newRow
+                    }">
+                        <td class="col-1"><span>${ index+1 }</span></td>
+                        <td class="col-2">
+                            <button class="backBtn vertical-text" v-if="!news.newRow" @click="resetValue(news)">リセット</button>
+                            <button class="deleteBtn vertical-text" v-if="news.newRow" @click="deleteRow(news)">削除</button>
+                        </td>
+                        <td :class="{'changed-cell': news.changedCells.includes(0) && !news.newRow}">
+                            <select v-model="news.current[0]" @change="markChanged(news, 0)" class="form-control">
+                                <option v-for="(app, index) in appsData" :key="index">${ app[0] }</option>
+                            </select>
+                        </td>
+                        <td :class="{'changed-cell': news.changedCells.includes(1) && !news.newRow}"><input type="text" v-model="news.current[1]" @input="markChanged(news, 1)" class="form-control"></td>
+                        <td :class="{'changed-cell': news.changedCells.includes(2) && !news.newRow}"><input type="text" v-model="news.current[2]" @input="markChanged(news, 2)" class="form-control" :title="news.current['2']"></td>
+                        <td :class="{'changed-cell': news.changedCells.includes(4) && !news.newRow}"><input type="text" v-model="news.current[4]" @input="markChanged(news, 4)" class="form-control flatpickr flatpickr-input"></td>
+                        <td :class="{'changed-cell': news.changedCells.includes(5) && !news.newRow}"><input type="text" v-model="news.current[5]" @input="markChanged(news, 5)" class="form-control"></td>
+                        <td><p v-text="calculateEndDate(news.current[4], news.current[5])" class="end-day"></p></td>
+                        <td :class="{'changed-cell': news.changedCells.includes(6) && !news.newRow}">
+                            <div class="file-input">
+                                <a :href="news.current[6]" target="_blank" class="form-control-plaintext" :title="getFileName(news.current[6])">${ getFileName(news.current[6] )}</a>
+                            </div>
+                        </td>
+                        <td :class="{'changed-cell': news.changedCells.includes(9) && !news.newRow}" v-if="isTestMode">
+                            <div class="file-input">
+                                <label class="fileUploadBtn" style="cursor: pointer;">
+                                    ファイルを選択
+                                    <input type="file" @change="fileChanged($event, news)" class="form-control-file" style="display: none;">
+                                </label>
+                                <a :href="news.fileUrl || news.current[9] " target="_blank" v-if="news.fileUrl || news.current[9] != ''">${ getFileName(news.current[9]) }</a>
+                            </div>
+                        </td>                                                                 
+                        <td v-if="isTestMode">
+                            <button class="updateBtn" @click="updateProductionFile(news)">本番掲載</button>
+                        </td>
+                        <td :class="{'changed-cell': news.changedCells.includes(7) && !news.newRow}"><input type="checkbox" v-model="news.current[7]" @change="markChanged(news, 7)" :checked="news.current[7] == 1"></td>
+                        <td>${ news.current[10] }</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between">
+            <button v-if="isTestMode" class="btn btn-success btn-add-row" @click="addRow">行追加</button>
+        </div>
+        <div class="footer">
+            <button class="btn btn-primary btn-register" @click="registerChanges">登録</button>
+            <button v-if="!isTestMode" class="btn btn-info btn-news" @click="redirectToNews">ニュースへ移動</button>
+        </div>
+        <!-- ポップアップ検索 -->
+        <div class="modal" tabindex="-1" style="display: block;" v-show="showModal">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">アプリ名によるニュース検索</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div v-for="app in appsData" :key="app.name">
+                            <input type="checkbox" v-model="selectedApps" :value="app[0]"> ${ app[0] }
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @click="applyFilter">検索</button>
+                        <button type="button" class="btn btn-secondary" @click="cancelSearch">キャンセル</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="application/json" id="news-data">{{ news_data | tojson | safe }}</script>
+    <script type="application/json" id="apps-data">{{ apps_data | tojson | safe }}</script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.9/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <script src="{{ url_for('static', filename='maintenance_script.js') }}"></script>
+</body>
+</html>

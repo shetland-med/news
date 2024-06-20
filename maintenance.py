@@ -4,9 +4,12 @@ import os
 import json
 from datetime import datetime, timedelta
 from contextlib import closing
-from common import logger, execution_sql, DATABASE_NAME, NEWS_FOLDER, SERVER_URL
+from common import execution_sql, read_ini
+from server import display_newsapp
 
 bp = Blueprint('maintenance', __name__)
+
+DATABASE_NAME, SERVER_URL, NEWS_FOLDER, logger = read_ini()
 
 @bp.route("/admin")
 def maintenance_index():
@@ -24,7 +27,7 @@ def maintenance_index():
         
         return render_template('maintenance.html', news_data=news_data, apps_data=apps_data)
     except Exception as e:
-        print(f"(maintenance_index): {e}")
+        logger.error(f"(maintenance_index): {e}")
 
 @bp.route("/register", methods=["POST"])
 def register_news():
@@ -73,7 +76,7 @@ def register_news():
                             file_name = f"{base}_{now}{count}{extension}"
                     
                     # ファイル名をリネーム
-                    news['current']['6'] = file_name
+                    news['current']['9'] = file_name
                     
                 app_id = select_appID(cursor, news['current']['0'])
                 if news['newRow']:
@@ -177,10 +180,10 @@ def create_news_sql():
 def create_insert_sql(news):
     try:
         sql = """
-        INSERT INTO News_Mgmt (Category, Title, Year, PublicationDate, Deadline, EndFlag, News_FileName, Old_New_FileName)
+        INSERT INTO News_Mgmt (Category, Title, Year, PublicationDate, Deadline, EndFlag, Old_News_FileName)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
-        params = (news['current']['1'], news['current']['2'], news['current']['3'], news['current']['4'], news['current']['5'], news['current']['7'], news['current']['6'], news['current']['9'])
+        params = (news['current']['1'], news['current']['2'], news['current']['3'], news['current']['4'], news['current']['5'], news['current']['7'], news['current']['9'])
         return sql, params
     except Exception as e:
         logger.error(f"(create_insert_sql): {e}")
@@ -190,10 +193,13 @@ def create_insert_sql(news):
 def create_update_sql(news):
     try:
         sql = """
-        UPDATE News_Mgmt SET Category = ?, Title = ?, Year = ?, PublicationDate = ?, Deadline = ?, EndFlag = ?, News_FileName = ?, Old_News_FileName = ?
+        UPDATE News_Mgmt SET Category = ?, Title = ?, Year = ?, PublicationDate = ?, Deadline = ?, EndFlag = ?, Old_News_FileName = ?
         WHERE ID = ?
         """
-        params = (news['current']['1'], news['current']['2'], news['current']['3'], news['current']['4'], news['current']['5'], news['current']['7'], news['current']['6'], news['current']['9'], news['current']['8'])
+        params = (news['current']['1'], news['current']['2'], news['current']['3'], news['current']['4'], news['current']['5'], news['current']['7'], news['current']['9'], news['current']['8'])
+        
+        print(sql)
+        print(params)
         return sql, params
     except Exception as e:
         logger.error(f"(create_update_sql): {e}")
@@ -216,8 +222,59 @@ def create_url(news_data):
         for data in news_data:
             data = list(data)
             data[6] = SERVER_URL + "/open/" + data[6]
+            if data[9] is not None:
+                data[9] = SERVER_URL + "/open/" + data[9]
             li.append(data)
 
         return li
     except Exception as e:
-        logger.error(f"create_url: {e}")
+        logger.error(f"(create_url): {e}")
+        
+# 本番掲載ボタン押下時の処理
+@bp.route("/update_production", methods=["POST"])
+def update_production_news():
+    try:
+        news = json.loads(request.form['news'])
+        file = request.files.get('file', None)
+
+        with closing(sqlite3.connect(DATABASE_NAME)) as conn:
+            cursor = conn.cursor()
+
+            # ファイルのアップロード処理
+            if file:
+                now = datetime.now().strftime('%Y%m%d%H%M%S%f')
+                base, extension = os.path.splitext(file.filename)
+                file_name = f"{base}_{now}{extension}"
+
+                if not os.path.exists(NEWS_FOLDER):
+                    os.makedirs(NEWS_FOLDER)
+
+                if os.path.exists(os.path.join(NEWS_FOLDER, file_name)):
+                    count = 1
+                    while os.path.exists(os.path.join(NEWS_FOLDER, file_name)):
+                        count += 1
+                        file_name = f"{base}_{now}{count}{extension}"
+
+                news['6'] = file_name
+                file.save(os.path.join(NEWS_FOLDER, file_name))
+
+            update_sql = """
+                UPDATE News_Mgmt 
+                SET Category = ?, Title = ?, Year = ?, PublicationDate = ?, Deadline = ?, EndFlag = ?, News_FileName = ?, Old_News_FileName = ?
+                WHERE ID = ?
+            """
+            params = (news['1'], news['2'], news['3'], news['4'], news['5'], news['7'], news['6'], "", news['8'])
+            cursor.execute(update_sql, params)
+            conn.commit()
+
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logger.error(f"(update_production_news): {e}")
+        return jsonify({"status": "error", "message": str(e)})
+
+@bp.route('/news/<mode>')
+def move_news(mode):
+    try:
+        return display_newsapp(mode)
+    except Exception as e:
+        logger.error(f"(move_news): {e}")

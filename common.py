@@ -11,6 +11,8 @@ DATABASE_NAME = config['DATABASE']['db_path']
 SERVER_URL = config['SERVER']['ServerUrl']
 NEWS_FOLDER = config['NEWSFOLDER']['folder_path']
 
+logger = None  # グローバルロガー変数の定義
+
 # sql文の実行
 def execution_sql(sql, params=[]):
     try:
@@ -20,16 +22,17 @@ def execution_sql(sql, params=[]):
             rows = cursor.fetchall()
             return rows
     except Exception as e:
-        print(f"(execution_sql): {e}")
+        logger.error(f"(execution_sql): {e}")
         
 # iniファイルの読み込み
 def read_ini():
     try:
         global DATABASE_NAME, SERVER_URL, NEWS_FOLDER, logger 
+        logger = _setup_logger()
 
         return DATABASE_NAME, SERVER_URL, NEWS_FOLDER, logger 
     except Exception as e:
-        print(f"(read_ini): {e}")
+        logger.error(f"(read_ini): {e}")
         
 # LOGファイルの出力設定
 def _setup_logger(modname=__name__):
@@ -46,6 +49,10 @@ def _setup_logger(modname=__name__):
     # logfile
     dt_now = datetime.now()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    
+    if not os.path.exists("log"):
+        os.makedirs("log")
+    
     log_file = "log/debug_" + dt_now.strftime("%Y%m%d-%H%M%S") + ".log"
     fh = FileHandler(log_file)
     fh.setLevel(DEBUG)
@@ -54,5 +61,3 @@ def _setup_logger(modname=__name__):
     logger.addHandler(fh)
     
     return logger
-
-logger = _setup_logger()

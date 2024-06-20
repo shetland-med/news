@@ -1,15 +1,14 @@
 from flask import Flask, request, render_template, jsonify, send_file, Blueprint
-from logging import getLogger, DEBUG, INFO, ERROR, WARNING, Formatter, StreamHandler, FileHandler
-import sqlite3
 import os
-import configparser
 import json
-from datetime import datetime, timedelta
-from maintenance import bp
 from common import logger, read_ini, execution_sql
 
 app = Flask(__name__)
-app.register_blueprint(bp)
+
+# アプリケーションの起動時に一度だけ ini ファイルを読み込む
+app.config['DATABASE_NAME'], app.config['SERVER_URL'], app.config['NEWS_FOLDER'], app.config['LOGGER'] = read_ini()
+
+logger = app.config['LOGGER']  # ここで logger を取得
 
 @app.route('/news', methods=['POST', 'GET'])
 def index():
@@ -23,6 +22,9 @@ def index():
             username = "0bf"
             
             print(f"username: {username}")
+            # ディレクトリが存在しない場合は作成
+            if not os.path.exists("temp"):
+                os.makedirs("temp")
             with open(f"temp//data_{username}.json", 'w') as f:
                 json.dump(data, f)
             # ユーザのIDをクライアントに返す
@@ -30,8 +32,10 @@ def index():
 
         # 目次ページを作成
         elif request.method == "GET":
-
             username = request.args.get('username')
+            # ディレクトリが存在しない場合は作成
+            if not os.path.exists("temp"):
+                os.makedirs("temp")
             with open(f"temp//data_{username}.json", 'r') as f:
                 data = json.load(f)
             os.remove(f"temp//data_{username}.json")
@@ -105,7 +109,7 @@ def create_url(news_data):
         logger.error(f"create_url: {e}")
         
 # リンク押下時、新規タブに表示
-@bp.route('/open/<filename>')
+@app.route('/open/<filename>')
 def open_file(filename):
     try:
         logger.debug(os.path.join(app.config['NEWS_FOLDER'], filename))
@@ -174,7 +178,7 @@ def create_new_news(filter_app_list):
         )
         """
         if filter_app_list:
-            sql += " AND AppName IN ('" + "','".join(filter_app_list) + "')"
+            sql += " AND AppCategory IN ('" + "','".join(filter_app_list) + "')"
         return sql
     except Exception as e:
         logger.error(f"(create_new_news): {e}")
@@ -191,9 +195,43 @@ def filter_items(data):
         return filtered_data
     except Exception as e:
         logger.error(f"(filter_items): {e}")
+        
+# メンテナンス画面からニュースアプリへの移動
+def display_newsapp(mode):
+    try:
+        logger = app.config['LOGGER']
+        print(111)
+        print(f"logger:{logger}")
+        # 新着ニュースの取得
+        news_data = get_news(1)
+        news_date_fileterd = filter_items(news_data)
+        
+        # 過去掲載ニュースの取得        
+        previous_data = get_news(0)
+        previous_data_filtered = filter_items(previous_data)
+        previous_data_filtered = create_url(previous_data_filtered)
+
+        # フィルタ用アプリ名の取得
+        apps_query = "SELECT DISTINCT AppCategory, Path FROM App_Mgmt;"
+        apps_data = execution_sql(apps_query)
+
+        if mode == "test":
+            pass
+        else:
+            pass
+        
+        return render_template('index.html', news_data=news_date_fileterd, apps_data=apps_data, filter_apps=[], previous_news_data=previous_data_filtered)
+    except Exception as e:
+        logger.error(f"(index): {e}")
+
+
 
 if __name__ == "__main__":
-    # アプリケーションの起動時に一度だけ ini ファイルを読み込む
-    app.config['DATABASE_NAME'], app.config['SERVER_URL'], app.config['NEWS_FOLDER'], logger = read_ini()
+    # 最上部で実行するとmaintenance.pyとserver.pyで循環してしまうため下記で実行
+    from maintenance import bp
+    app.register_blueprint(bp)
+    
     app.run(debug=True)
+
+
 
